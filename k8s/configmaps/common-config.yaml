@@ -1,0 +1,55 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: common-config
+  namespace: mediflow
+  labels:
+    app.kubernetes.io/part-of: mediflow
+data:
+  KAFKA_BOOTSTRAP_SERVERS: host.docker.internal:39092
+  REDIS_HOST: host.docker.internal
+  REDIS_PORT: "6379"
+  TRACING_SAMPLING_PROBABILITY: "0.0"
+  OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://host.docker.internal:4318/v1/traces
+  JWT_ISSUER: medical-emergency-coordination-system
+  JWT_EXPIRATION_MS: "86400000"
+  JWT_JWK_SET_URI: http://api-gateway/.well-known/jwks.json
+
+  USER_SERVICE_URL: http://user-service
+  EMERGENCY_REQUEST_SERVICE_URL: http://emergency-request-service
+  AMBULANCE_SERVICE_URL: http://ambulance-service
+  LOCATION_SERVICE_URL: http://location-service
+  MATCHING_SERVICE_URL: http://matching-service
+  HOSPITAL_SERVICE_URL: http://hospital-service
+  CASE_SERVICE_URL: http://case-service
+  NOTIFICATION_SERVICE_URL: http://notification-service
+
+  USER_DB_HOST: host.docker.internal
+  USER_DB_PORT: "5433"
+  USER_DB_NAME: user_db
+  EMERGENCY_DB_HOST: host.docker.internal
+  EMERGENCY_DB_PORT: "5434"
+  EMERGENCY_DB_NAME: emergency_request_db
+  AMBULANCE_DB_HOST: host.docker.internal
+  AMBULANCE_DB_PORT: "5435"
+  AMBULANCE_DB_NAME: ambulance_db
+  HOSPITAL_DB_HOST: host.docker.internal
+  HOSPITAL_DB_PORT: "5436"
+  HOSPITAL_DB_NAME: hospital_db
+  MATCHING_HOST: host.docker.internal
+  MATCHING_PORT: "5437"
+  MATCHING_NAME: matching_db
+  CASE_DB_HOST: host.docker.internal
+  CASE_DB_PORT: "5439"
+  CASE_DB_NAME: case_db
+  NOTIFICATION_DB_HOST: host.docker.internal
+  NOTIFICATION_DB_PORT: "5440"
+  NOTIFICATION_DB_NAME: notification_db
+
+  EMERGENCY_EVENTS_TOPIC: emergency-events
+  DISPATCH_EVENTS_TOPIC: dispatch-events
+  AMBULANCE_EVENTS_TOPIC: ambulance-events
+  HOSPITAL_EVENTS_TOPIC: hospital-events
+  LOCATION_EVENTS_TOPIC: location-events
+  NOTIFICATION_EVENTS_TOPIC: notification-events
+  CASE_EVENTS_TOPIC: case-events

@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gateway-routes
+  namespace: mediflow
+  labels:
+    app.kubernetes.io/part-of: mediflow
+data:
+  USER_ROUTE_URI: http://user-service
+  EMERGENCY_ROUTE_URI: http://emergency-request-service
+  AMBULANCE_ROUTE_URI: http://ambulance-service
+  LOCATION_ROUTE_URI: http://location-service
+  MATCHING_ROUTE_URI: http://matching-service
+  HOSPITAL_ROUTE_URI: http://hospital-service
+  CASE_ROUTE_URI: http://case-service
+  NOTIFICATION_ROUTE_URI: http://notification-service

@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ambulance-service
+  namespace: mediflow
+  labels:
+    app: ambulance-service
+    app.kubernetes.io/part-of: mediflow
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ambulance-service
+  template:
+    metadata:
+      labels:
+        app: ambulance-service
+    spec:
+      containers:
+        - name: ambulance-service
+          image: mediflow/ambulance-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8083
+          envFrom:
+            - configMapRef:
+                name: common-config
+            - secretRef:
+                name: db-secrets
+            - secretRef:
+                name: jwt-secret
+          env:
+            - name: SERVER_PORT
+              value: "8083"
+          startupProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8083
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 30
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8083
+            initialDelaySeconds: 30
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8083
+            initialDelaySeconds: 45
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 250m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi

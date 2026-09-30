@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: emergency-request-service
+  namespace: mediflow
+  labels:
+    app: emergency-request-service
+    app.kubernetes.io/part-of: mediflow
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: emergency-request-service
+  template:
+    metadata:
+      labels:
+        app: emergency-request-service
+    spec:
+      containers:
+        - name: emergency-request-service
+          image: mediflow/emergency-request-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8082
+          envFrom:
+            - configMapRef:
+                name: common-config
+            - secretRef:
+                name: db-secrets
+            - secretRef:
+                name: jwt-secret
+          env:
+            - name: SERVER_PORT
+              value: "8082"
+          startupProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8082
+            periodSeconds: 2
+            timeoutSeconds: 5
+            failureThreshold: 120
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8082
+            initialDelaySeconds: 5
+            periodSeconds: 2
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8082
+            initialDelaySeconds: 60
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 5
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: "2"
+              memory: 768Mi

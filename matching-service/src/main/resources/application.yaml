@@ -1,0 +1,92 @@
+server:
+  port: ${SERVER_PORT:8085}
+
+spring:
+  application:
+    name: matching-service
+  datasource:
+    url: jdbc:postgresql://${MATCHING_HOST:localhost}:${MATCHING_PORT:5437}/${MATCHING_NAME:matching_db}
+    username: ${MATCHING_USERNAME:medical}
+    password: ${MATCHING_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 2s
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:29092}
+    listener:
+      concurrency: ${KAFKA_LISTENER_CONCURRENCY:2}
+    consumer:
+      auto-offset-reset: earliest
+      group-id: ${spring.application.name}
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      properties:
+        partition.assignment.strategy: org.apache.kafka.clients.consumer.CooperativeStickyAssignor
+        spring.json.trusted.packages: org.example.*
+    producer:
+      acks: all
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      retries: 10
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      properties:
+        enable.idempotence: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: when_authorized
+  health:
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
+    metrics:
+      tags:
+        application: ${spring.application.name}
+  metrics:
+    tags:
+      application: ${spring.application.name}
+  tracing:
+    sampling:
+      probability: ${TRACING_SAMPLING_PROBABILITY:1.0}
+  otlp:
+    tracing:
+      endpoint: ${OTEL_EXPORTER_OTLP_TRACES_ENDPOINT:http://localhost:4318/v1/traces}
+
+medical:
+  events:
+    topics:
+      emergency-events: emergency-events
+      ambulance-events: ambulance-events
+      hospital-events: hospital-events
+      matching-events: matching-events
+  idempotency:
+    enabled: true
+    redis-key-prefix: processed-event
+    processed-event-retention: 30d
+  matching:
+    assignment-lock-ttl: 30s
+    stale-ambulance-timeout: 45s
+  security:
+    jwt:
+      issuer: ${JWT_ISSUER:medical-emergency-coordination-system}
+      jwk-set-uri: ${JWT_JWK_SET_URI:http://localhost:8080/.well-known/jwks.json}
+
+services:
+  ambulance-url: ${AMBULANCE_SERVICE_URL:http://localhost:8083}
+  location-url: ${LOCATION_SERVICE_URL:http://localhost:8084}
+  hospital-url: ${HOSPITAL_SERVICE_URL:http://localhost:8086}

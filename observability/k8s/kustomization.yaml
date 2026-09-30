@@ -1,0 +1,29 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - prometheus.yaml
+  - grafana.yaml
+  - kube-state-metrics.yaml
+
+configMapGenerator:
+  - name: prometheus-config
+    namespace: mediflow
+    files:
+      - prometheus.yml=config/prometheus.yml
+  - name: grafana-datasource
+    namespace: mediflow
+    files:
+      - prometheus.yml=config/grafana-datasource.yml
+  - name: grafana-dashboard-provider
+    namespace: mediflow
+    files:
+      - dashboard-provider.yml=config/grafana-dashboard-provider.yml
+  - name: grafana-dashboards
+    namespace: mediflow
+    files:
+      - business-metrics.json=config/business-metrics.json
+      - infrastructure.json=config/infrastructure.json
+
+generatorOptions:
+  disableNameSuffixHash: true

@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: case-service
+  namespace: mediflow
+  labels:
+    app: case-service
+    app.kubernetes.io/part-of: mediflow
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: case-service
+  template:
+    metadata:
+      labels:
+        app: case-service
+    spec:
+      containers:
+        - name: case-service
+          image: mediflow/case-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8087
+          envFrom:
+            - configMapRef:
+                name: common-config
+            - secretRef:
+                name: db-secrets
+            - secretRef:
+                name: jwt-secret
+          env:
+            - name: SERVER_PORT
+              value: "8087"
+          startupProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8087
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 30
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8087
+            initialDelaySeconds: 30
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8087
+            initialDelaySeconds: 45
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 250m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi

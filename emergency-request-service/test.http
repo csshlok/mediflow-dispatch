@@ -1,0 +1,179 @@
+### ==========================================
+### ENVIRONMENT VARIABLES (CHANGE YOUR IP HERE)
+### ==========================================
+@host = http://localhost:8080
+# Paste tokens from the login responses below
+@dispatcherToken = paste-dispatcher-token
+@paramedicToken = paste-paramedic-token
+@adminToken = paste-admin-token
+@samplePassword = change-me-sample
+@adminPassword = change-me-admin
+### ==========================================
+### 0. SETUP: CREATE OUR USERS
+### ==========================================
+
+### Create Dispatcher
+POST {{host}}/api/auth/register
+Content-Type: application/json
+
+{
+  "name": "Dave Dispatcher",
+  "email": "dispatcher@mediflow.com",
+  "password": "{{samplePassword}}",
+  "role": "DISPATCHER"
+}
+
+### Create Paramedic
+POST {{host}}/api/auth/register
+Content-Type: application/json
+
+{
+  "name": "Pam Paramedic",
+  "email": "paramedic@mediflow.com",
+  "password": "{{samplePassword}}",
+  "role": "PARAMEDIC"
+}
+
+### Create Admin
+POST {{host}}/api/auth/register
+Content-Type: application/json
+
+{
+  "name": "Alice Admin",
+  "email": "admin@mediflow.com",
+  "password": "{{adminPassword}}",
+  "role": "ADMIN"
+}
+
+
+### ==========================================
+### SCENARIO 1: Valid Dispatcher Creates Emergency
+### ==========================================
+
+### 1A. Login as Dispatcher (Copy the token from the response!)
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "dispatcher@mediflow.com",
+  "password": "{{samplePassword}}"
+}
+
+### 1B. Create Emergency (Paste token below)
+POST {{host}}/api/emergency
+Content-Type: application/json
+Idempotency-Key: {{$uuid}}
+Authorization: Bearer {{dispatcherToken}}
+
+{
+  "patientId": "PAT-98775",
+  "severity": "CRITICAL",
+  "latitude": 28.6139,
+  "longitude": 77.2090
+}
+
+
+### ==========================================
+### SCENARIO 2: Invalid JWT is Rejected
+### ==========================================
+
+### 2A. Attempt request with fake token
+POST {{host}}/api/emergency
+Content-Type: application/json
+Idempotency-Key: 123765
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.fake.token
+
+### EXPECTED: 401 Unauthorized
+
+
+### ==========================================
+### SCENARIO 3: Paramedic Cannot Create Hospital
+### ==========================================
+
+### 3A. Login as Paramedic (Copy the token!)
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "paramedic@mediflow.com",
+  "password": "{{samplePassword}}"
+}
+
+### 3B. Attempt to access a restricted Admin endpoint
+POST {{host}}/api/hospitals
+Content-Type: application/json
+Idempotency-Key: 2398736
+Authorization: Bearer {{paramedicToken}}
+
+{
+  "name": "City General",
+  "totalBeds": 150,
+  "latitude": 28.6139,
+  "longitude": 77.2090
+}
+
+### EXPECTED: 403 Forbidden
+
+
+### ==========================================
+### SCENARIO 4: Admin Creates Hospital
+### ==========================================
+
+### 4A. Login as Admin (Copy the token!)
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@mediflow.com",
+  "password": "{{adminPassword}}"
+}
+
+### 4B. Admin accesses restricted endpoint
+POST {{host}}/api/hospitals
+Content-Type: application/json
+Idempotency-Key: 234546
+Authorization: Bearer {{adminToken}}
+
+{
+  "name": "City General",
+  "totalBeds": 150,
+  "latitude": 28.6139,
+  "longitude": 77.2090
+}
+
+### EXPECTED: 201 Created
+
+
+### ==========================================
+### ADD A NEW AMBULANCE
+### ==========================================
+
+### Add Advanced Life Support Ambulance
+POST {{host}}/api/ambulances
+Content-Type: application/json
+Idempotency-Key: {{$uuid}}
+Authorization: Bearer {{adminToken}}
+
+{
+  "registrationNumber": "DL-1D-AA-1123",
+  "capabilities": "ALS, Ventilator, Defibrillator",
+  "crewInfo": "2 Paramedics, 1 Driver"
+}
+
+
+### ==========================================
+### ADD A NEW HOSPITAL
+### ==========================================
+
+### Admin accesses restricted endpoint using proper DTO payload
+POST {{host}}/api/hospitals
+Content-Type: application/json
+Idempotency-Key: {{$uuid}}
+Authorization: Bearer {{adminToken}}
+
+{
+  "hospitalName": "Apollo Downtown 7",
+  "availableBeds": 250,
+  "latitude": 28.6150,
+  "longitude": 77.2100
+}

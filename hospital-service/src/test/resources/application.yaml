@@ -1,0 +1,18 @@
+spring:
+  main:
+    banner-mode: off
+  flyway:
+    enabled: false
+  datasource:
+    url: jdbc:h2:mem:${spring.application.name:testdb};MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_UPPER=false
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: none
+    open-in-view: false
+
+management:
+  otlp:
+    tracing:
+      endpoint: http://localhost:4318/v1/traces

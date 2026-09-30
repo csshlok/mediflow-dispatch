@@ -1,0 +1,81 @@
+server:
+  port: ${SERVER_PORT:8081}
+
+jwt:
+  secret: ${JWT_SECRET}
+  expiration: ${JWT_EXPIRATION_MS:86400000}
+
+spring:
+  application:
+    name: user-service
+  datasource:
+    url: jdbc:postgresql://${USER_DB_HOST:localhost}:${USER_DB_PORT:5433}/${USER_DB_NAME:user_db}
+    username: ${USER_DB_USERNAME:user}
+    password: ${USER_DB_PASSWORD}
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:29092}
+    consumer:
+      auto-offset-reset: earliest
+      group-id: ${spring.application.name}
+      properties:
+        spring.json.trusted.packages: org.example.*
+    producer:
+      acks: all
+      retries: 10
+      properties:
+        enable.idempotence: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: when_authorized
+  health:
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
+    metrics:
+      tags:
+        application: ${spring.application.name}
+  metrics:
+    tags:
+      application: ${spring.application.name}
+  tracing:
+    sampling:
+      probability: ${TRACING_SAMPLING_PROBABILITY:1.0}
+  otlp:
+    tracing:
+      endpoint: ${OTEL_EXPORTER_OTLP_TRACES_ENDPOINT:http://localhost:4318/v1/traces}
+
+medical:
+  events:
+    topics:
+      emergency-events: emergency-events
+      notification-events: notification-events
+  idempotency:
+    enabled: true
+    processed-event-retention: 30d
+  outbox:
+    enabled: true
+    relay-interval: 5s
+  security:
+    jwt:
+      issuer: ${JWT_ISSUER:medical-emergency-coordination-system}
+      jwk-set-uri: ${JWT_JWK_SET_URI:http://localhost:8080/.well-known/jwks.json}

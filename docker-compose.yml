@@ -1,0 +1,446 @@
+name: medical-emergency-coordination-system
+
+x-service-env: &service-env
+  KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+  REDIS_HOST: redis
+  REDIS_PORT: "6379"
+  JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+  JWT_EXPIRATION_MS: "86400000"
+  JWT_ISSUER: medical-emergency-coordination-system
+  JWT_JWK_SET_URI: http://api-gateway:8080/.well-known/jwks.json
+  TRACING_SAMPLING_PROBABILITY: "0.0"
+  USER_SERVICE_URL: http://user-service:8081
+  EMERGENCY_REQUEST_SERVICE_URL: http://emergency-request-service:8082
+  AMBULANCE_SERVICE_URL: http://ambulance-service:8083
+  LOCATION_SERVICE_URL: http://location-service:8084
+  MATCHING_SERVICE_URL: http://matching-service:8085
+  HOSPITAL_SERVICE_URL: http://hospital-service:8086
+  CASE_SERVICE_URL: http://case-service:8087
+  NOTIFICATION_SERVICE_URL: http://notification-service:8088
+
+x-service-defaults: &service-defaults
+  restart: unless-stopped
+
+services:
+  kafka:
+    image: apache/kafka:3.7.0
+    ports:
+      - "29092:29092"
+      - "39092:39092"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:29092,K8S://:39092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,EXTERNAL://localhost:29092,K8S://host.docker.internal:39092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT,K8S:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_NUM_PARTITIONS: 6
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+      start_period: 90s
+
+  user-db:
+    image: postgres:17-alpine
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_DB: user_db
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: ${USER_DB_PASSWORD:?set USER_DB_PASSWORD in .env}
+    volumes:
+      - user-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d user_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  emergency-db:
+    image: postgres:17-alpine
+    ports:
+      - "5434:5432"
+    environment:
+      POSTGRES_DB: emergency_request_db
+      POSTGRES_USER: medical
+      POSTGRES_PASSWORD: ${EMERGENCY_DB_PASSWORD:?set EMERGENCY_DB_PASSWORD in .env}
+    volumes:
+      - emergency-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U medical -d emergency_request_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  ambulance-db:
+    image: postgres:17-alpine
+    ports:
+      - "5435:5432"
+    environment:
+      POSTGRES_DB: ambulance_db
+      POSTGRES_USER: medical
+      POSTGRES_PASSWORD: ${AMBULANCE_DB_PASSWORD:?set AMBULANCE_DB_PASSWORD in .env}
+    volumes:
+      - ambulance-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U medical -d ambulance_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  hospital-db:
+    image: postgres:17-alpine
+    ports:
+      - "5436:5432"
+    environment:
+      POSTGRES_DB: hospital_db
+      POSTGRES_USER: medical
+      POSTGRES_PASSWORD: ${HOSPITAL_DB_PASSWORD:?set HOSPITAL_DB_PASSWORD in .env}
+    volumes:
+      - hospital-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U medical -d hospital_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  matching-db:
+    image: postgres:17-alpine
+    ports:
+      - "5437:5432"
+    environment:
+      POSTGRES_DB: matching_db
+      POSTGRES_USER: medical
+      POSTGRES_PASSWORD: ${MATCHING_PASSWORD:?set MATCHING_PASSWORD in .env}
+    volumes:
+      - matching-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U medical -d matching_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  case-db:
+    image: postgres:17-alpine
+    ports:
+      - "5439:5432"
+    environment:
+      POSTGRES_DB: case_db
+      POSTGRES_USER: medical
+      POSTGRES_PASSWORD: ${CASE_DB_PASSWORD:?set CASE_DB_PASSWORD in .env}
+    volumes:
+      - case-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U medical -d case_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  notification-db:
+    image: postgres:17-alpine
+    ports:
+      - "5440:5432"
+    environment:
+      POSTGRES_DB: notification_db
+      POSTGRES_USER: medical
+      POSTGRES_PASSWORD: ${NOTIFICATION_DB_PASSWORD:?set NOTIFICATION_DB_PASSWORD in .env}
+    volumes:
+      - notification-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U medical -d notification_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  user-service:
+    <<: *service-defaults
+    image: mediflow/user-service:latest
+    build:
+      context: .
+      dockerfile: user-service/Dockerfile
+    ports:
+      - "8081:8081"
+    environment:
+      <<: *service-env
+      SERVER_PORT: "8081"
+      USER_DB_HOST: user-db
+      USER_DB_PORT: "5432"
+      USER_DB_NAME: user_db
+      USER_DB_USERNAME: user
+      USER_DB_PASSWORD: ${USER_DB_PASSWORD:?set USER_DB_PASSWORD in .env}
+    depends_on:
+      kafka:
+        condition: service_healthy
+      user-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8081/actuator/health/liveness | grep -q UP"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+  emergency-request-service:
+    <<: *service-defaults
+    image: mediflow/emergency-request-service:latest
+    build:
+      context: .
+      dockerfile: emergency-request-service/Dockerfile
+    ports:
+      - "8082:8082"
+    environment:
+      <<: *service-env
+      SERVER_PORT: "8082"
+      EMERGENCY_DB_HOST: emergency-db
+      EMERGENCY_DB_PORT: "5432"
+      EMERGENCY_DB_NAME: emergency_request_db
+      EMERGENCY_DB_USERNAME: medical
+      EMERGENCY_DB_PASSWORD: ${EMERGENCY_DB_PASSWORD:?set EMERGENCY_DB_PASSWORD in .env}
+    depends_on:
+      kafka:
+        condition: service_healthy
+      emergency-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8082/actuator/health/liveness | grep -q UP"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+  ambulance-service:
+    <<: *service-defaults
+    image: mediflow/ambulance-service:latest
+    build:
+      context: .
+      dockerfile: ambulance-service/Dockerfile
+    ports:
+      - "8083:8083"
+    environment:
+      <<: *service-env
+      SERVER_PORT: "8083"
+      AMBULANCE_DB_HOST: ambulance-db
+      AMBULANCE_DB_PORT: "5432"
+      AMBULANCE_DB_NAME: ambulance_db
+      AMBULANCE_DB_USERNAME: medical
+      AMBULANCE_DB_PASSWORD: ${AMBULANCE_DB_PASSWORD:?set AMBULANCE_DB_PASSWORD in .env}
+    depends_on:
+      kafka:
+        condition: service_healthy
+      ambulance-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8083/actuator/health/liveness | grep -q UP"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+  location-service:
+    <<: *service-defaults
+    image: mediflow/location-service:latest
+    build:
+      context: .
+      dockerfile: location-service/Dockerfile
+    ports:
+      - "8084:8084"
+    environment:
+      <<: *service-env
+      SERVER_PORT: "8084"
+    depends_on:
+      kafka:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      ambulance-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8084/actuator/health/liveness | grep -q UP"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+  hospital-service:
+    <<: *service-defaults
+    image: mediflow/hospital-service:latest
+    build:
+      context: .
+      dockerfile: hospital-service/Dockerfile
+    ports:
+      - "8086:8086"
+    environment:
+      <<: *service-env
+      SERVER_PORT: "8086"
+      HOSPITAL_DB_HOST: hospital-db
+      HOSPITAL_DB_PORT: "5432"
+      HOSPITAL_DB_NAME: hospital_db
+      HOSPITAL_DB_USERNAME: medical
+      HOSPITAL_DB_PASSWORD: ${HOSPITAL_DB_PASSWORD:?set HOSPITAL_DB_PASSWORD in .env}
+    depends_on:
+      kafka:
+        condition: service_healthy
+      hospital-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8086/actuator/health/liveness | grep -q UP"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+  matching-service:
+    <<: *service-defaults
+    image: mediflow/matching-service:latest
+    build:
+      context: .
+      dockerfile: matching-service/Dockerfile
+    ports:
+      - "8085:8085"
+    environment:
+      <<: *service-env
+      SERVER_PORT: "8085"
+      MATCHING_HOST: matching-db
+      MATCHING_PORT: "5432"
+      MATCHING_NAME: matching_db
+      MATCHING_USERNAME: medical
+      MATCHING_PASSWORD: ${MATCHING_PASSWORD:?set MATCHING_PASSWORD in .env}
+    depends_on:
+      kafka:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      matching-db:
+        condition: service_healthy
+      ambulance-service:
+        condition: service_healthy
+      location-service:
+        condition: service_healthy
+      hospital-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8085/actuator/health/liveness | grep -q UP"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+  case-service:
+    <<: *service-defaults
+    image: mediflow/case-service:latest
+    build:
+      context: .
+      dockerfile: case-service/Dockerfile
+    ports:
+      - "8087:8087"
+    environment:
+      <<: *service-env
+      SERVER_PORT: "8087"
+      CASE_DB_HOST: case-db
+      CASE_DB_PORT: "5432"
+      CASE_DB_NAME: case_db
+      CASE_DB_USERNAME: medical
+      CASE_DB_PASSWORD: ${CASE_DB_PASSWORD:?set CASE_DB_PASSWORD in .env}
+    depends_on:
+      kafka:
+        condition: service_healthy
+      case-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8087/actuator/health/liveness | grep -q UP"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+  notification-service:
+    <<: *service-defaults
+    image: mediflow/notification-service:latest
+    build:
+      context: .
+      dockerfile: notification-service/Dockerfile
+    ports:
+      - "8088:8088"
+    environment:
+      <<: *service-env
+      SERVER_PORT: "8088"
+      SPRING_DATASOURCE_URL: jdbc:postgresql://notification-db:5432/notification_db
+      SPRING_DATASOURCE_USERNAME: medical
+      SPRING_DATASOURCE_PASSWORD: ${NOTIFICATION_DB_PASSWORD:?set NOTIFICATION_DB_PASSWORD in .env}
+      SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_JPA_OPEN_IN_VIEW: "false"
+    depends_on:
+      kafka:
+        condition: service_healthy
+      notification-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8088/actuator/health/liveness | grep -q UP"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+  api-gateway:
+    <<: *service-defaults
+    image: mediflow/api-gateway:latest
+    build:
+      context: .
+      dockerfile: api-gateway/Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      <<: *service-env
+      SERVER_PORT: "8080"
+    depends_on:
+      user-service:
+        condition: service_healthy
+      emergency-request-service:
+        condition: service_healthy
+      ambulance-service:
+        condition: service_healthy
+      location-service:
+        condition: service_healthy
+      matching-service:
+        condition: service_healthy
+      hospital-service:
+        condition: service_healthy
+      case-service:
+        condition: service_healthy
+      notification-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health/liveness | grep -q UP"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+volumes:
+  user-db-data:
+  emergency-db-data:
+  ambulance-db-data:
+  hospital-db-data:
+  matching-db-data:
+  case-db-data:
+  notification-db-data:

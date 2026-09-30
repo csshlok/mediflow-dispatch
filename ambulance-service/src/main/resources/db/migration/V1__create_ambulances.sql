@@ -1,0 +1,7 @@
+CREATE TABLE IF NOT EXISTS ambulances (
+    id UUID PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    latitude DOUBLE PRECISION NOT NULL,
+    longitude DOUBLE PRECISION NOT NULL,
+    status VARCHAR(20) NOT NULL
+);

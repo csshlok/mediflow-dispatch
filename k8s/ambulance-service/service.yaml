@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: ambulance-service
+  namespace: mediflow
+  labels:
+    app: ambulance-service
+    app.kubernetes.io/part-of: mediflow
+spec:
+  type: ClusterIP
+  selector:
+    app: ambulance-service
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: 8083

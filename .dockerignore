@@ -1,0 +1,10 @@
+.git
+.agents
+.codex
+.idea
+.vscode
+**/target
+*.log
+docker-compose*.override.yml
+README.md
+k8s

@@ -1,0 +1,102 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-gateway
+  namespace: mediflow
+  labels:
+    app: api-gateway
+    app.kubernetes.io/part-of: mediflow
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: api-gateway
+  template:
+    metadata:
+      labels:
+        app: api-gateway
+    spec:
+      containers:
+        - name: api-gateway
+          image: mediflow/api-gateway:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: common-config
+            - secretRef:
+                name: jwt-secret
+          env:
+            - name: SERVER_PORT
+              value: "8080"
+            - name: USER_SERVICE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: gateway-routes
+                  key: USER_ROUTE_URI
+            - name: EMERGENCY_REQUEST_SERVICE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: gateway-routes
+                  key: EMERGENCY_ROUTE_URI
+            - name: AMBULANCE_SERVICE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: gateway-routes
+                  key: AMBULANCE_ROUTE_URI
+            - name: LOCATION_SERVICE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: gateway-routes
+                  key: LOCATION_ROUTE_URI
+            - name: MATCHING_SERVICE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: gateway-routes
+                  key: MATCHING_ROUTE_URI
+            - name: HOSPITAL_SERVICE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: gateway-routes
+                  key: HOSPITAL_ROUTE_URI
+            - name: CASE_SERVICE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: gateway-routes
+                  key: CASE_ROUTE_URI
+            - name: NOTIFICATION_SERVICE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: gateway-routes
+                  key: NOTIFICATION_ROUTE_URI
+          startupProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8080
+            periodSeconds: 2
+            timeoutSeconds: 2
+            failureThreshold: 60
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 2
+            timeoutSeconds: 2
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 250m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi

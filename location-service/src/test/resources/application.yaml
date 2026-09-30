@@ -1,0 +1,19 @@
+spring:
+  main:
+    banner-mode: off
+  task:
+    scheduling:
+      enabled: false
+
+management:
+  otlp:
+    tracing:
+      endpoint: http://localhost:4318/v1/traces
+
+ambulance:
+  service:
+    url: http://localhost:8083
+
+location:
+  simulator:
+    enabled: false

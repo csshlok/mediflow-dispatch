@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: matching-service
+  namespace: mediflow
+  labels:
+    app: matching-service
+    app.kubernetes.io/part-of: mediflow
+spec:
+  type: ClusterIP
+  selector:
+    app: matching-service
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: 8085
