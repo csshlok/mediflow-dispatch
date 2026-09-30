@@ -23,6 +23,9 @@ public class Ambulance {
     @Enumerated(EnumType.STRING)
     private AmbulanceStatus status;
 
+    // The emergency currently holding this ambulance (null while AVAILABLE)
+    private UUID assignedEmergencyId;
+
     // Default Constructor for JPA
     public Ambulance() {}
 
@@ -43,4 +46,6 @@ public class Ambulance {
     public void setCrewInfo(String crewInfo) { this.crewInfo = crewInfo; }
     public AmbulanceStatus getStatus() { return status; }
     public void setStatus(AmbulanceStatus status) { this.status = status; }
+    public UUID getAssignedEmergencyId() { return assignedEmergencyId; }
+    public void setAssignedEmergencyId(UUID assignedEmergencyId) { this.assignedEmergencyId = assignedEmergencyId; }
 }

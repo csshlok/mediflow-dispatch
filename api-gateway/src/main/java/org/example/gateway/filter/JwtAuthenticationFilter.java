@@ -9,8 +9,13 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
+import java.util.regex.Pattern;
+
 @Component
 public class JwtAuthenticationFilter extends AbstractGatewayFilterFactory<JwtAuthenticationFilter.Config> {
+
+    private static final Pattern PARAMEDIC_ACTION =
+            Pattern.compile("^/api/ambulances/[^/]+/(pickup/[^/]+|deliver/[^/]+/[^/]+)$");
 
     private final JwtValidator jwtValidator;
 
@@ -69,8 +74,8 @@ public class JwtAuthenticationFilter extends AbstractGatewayFilterFactory<JwtAut
         }
 
         if ("PARAMEDIC".equals(role)) {
-            // Paramedics can only update ambulance statuses
-            return path.startsWith("/api/ambulances/") && method.equals("POST");
+            // Paramedics can only record pickups and deliveries; reserve/release are internal saga calls
+            return method.equals("POST") && PARAMEDIC_ACTION.matcher(path).matches();
         }
 
         return false;

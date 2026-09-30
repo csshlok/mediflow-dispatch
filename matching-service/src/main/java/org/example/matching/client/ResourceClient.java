@@ -91,11 +91,11 @@ public class ResourceClient {
     }
 
     // For Void methods, we just return a dummy value (true) to satisfy the Supplier
-    public void reserveAmbulance(UUID ambulanceId, String status) {
+    public void reserveAmbulance(UUID ambulanceId, UUID emergencyId) {
         executeWithRetry(() -> {
-            restTemplate.patchForObject(
-                    ambulanceUrl + "/ambulances/" + ambulanceId + "/status",
-                    Map.of("status", status),
+            restTemplate.postForObject(
+                    ambulanceUrl + "/ambulances/" + ambulanceId + "/reserve",
+                    Map.of("emergencyId", emergencyId.toString()),
                     Void.class
             );
             return true;
@@ -125,11 +125,11 @@ public class ResourceClient {
         }, "Reserve Hospital");
     }
 
-    public void releaseAmbulance(UUID ambulanceId) {
+    public void releaseAmbulance(UUID ambulanceId, UUID emergencyId) {
         executeWithRetry(() -> {
-            restTemplate.patchForObject(
-                    ambulanceUrl + "/ambulances/" + ambulanceId + "/status",
-                    Map.of("status", "AVAILABLE"), // Put it back!
+            restTemplate.postForObject(
+                    ambulanceUrl + "/ambulances/" + ambulanceId + "/release",
+                    Map.of("emergencyId", emergencyId.toString()), // Put it back!
                     Void.class
             );
             return true;

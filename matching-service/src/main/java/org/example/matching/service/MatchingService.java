@@ -77,7 +77,7 @@ public class MatchingService {
 
                 try {
                     // Try to lock it. If Optimistic Lock fails, this throws an HTTP Exception.
-                    resourceClient.reserveAmbulance(bestAmbulanceId, AmbulanceStatus.RESERVED.name());
+                    resourceClient.reserveAmbulance(bestAmbulanceId, emergencyId);
                     isReserved = true;
                 } catch (Exception e) {
                     // Remove the stolen ambulance from our local list and loop again
@@ -138,7 +138,7 @@ public class MatchingService {
 
     private void compensateAmbulance(DispatchSaga saga) {
         try {
-            resourceClient.releaseAmbulance(UUID.fromString(saga.getAmbulanceId()));
+            resourceClient.releaseAmbulance(UUID.fromString(saga.getAmbulanceId()), UUID.fromString(saga.getEmergencyId()));
             saga.setState(SagaState.COMPENSATED);
             sagaCompensated.increment();
         } catch (Exception ex) {
