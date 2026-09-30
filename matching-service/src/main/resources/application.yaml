@@ -81,6 +81,8 @@ medical:
   matching:
     assignment-lock-ttl: 30s
     stale-ambulance-timeout: 45s
+    saga-stale-after: 2m
+    saga-recovery-interval: 60s
   security:
     jwt:
       issuer: ${JWT_ISSUER:medical-emergency-coordination-system}
@@ -90,3 +92,5 @@ services:
   ambulance-url: ${AMBULANCE_SERVICE_URL:http://localhost:8083}
   location-url: ${LOCATION_SERVICE_URL:http://localhost:8084}
   hospital-url: ${HOSPITAL_SERVICE_URL:http://localhost:8086}
+  connect-timeout: 2s
+  read-timeout: 5s

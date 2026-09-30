@@ -5,6 +5,6 @@ public enum SagaState {
     AMBULANCE_RESERVED,  // Ambulance locked in, attempting hospital
     HOSPITAL_RESERVED,   // Both locked in, preparing final dispatch
     COMPLETED,           // Successfully pushed to Outbox
-    FAILED,              // Network failed entirely
-    COMPENSATED          // Ambulance was successfully released after a failure
+    FAILED,              // Attempt failed and compensation did not finish; the recovery job retries it
+    COMPENSATED          // Attempt failed and every reservation was released; the event will be retried
 }
