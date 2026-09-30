@@ -71,10 +71,18 @@ spring:
             - id: notification-service
               uri: ${NOTIFICATION_SERVICE_URL:http://localhost:8088}
               predicates:
-                - Path=/api/notifications/**,/ws/**
+                - Path=/api/notifications/**
               filters:
                 - JwtAuthenticationFilter
                 - StripPrefix=1
+
+            # Live notification stream; the path is forwarded unchanged (/ws/notifications)
+            - id: notification-websocket
+              uri: ${NOTIFICATION_SERVICE_WS_URL:ws://localhost:8088}
+              predicates:
+                - Path=/ws/**
+              filters:
+                - JwtAuthenticationFilter
 
 management:
   endpoints:

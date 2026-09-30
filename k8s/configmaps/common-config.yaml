@@ -23,6 +23,7 @@ data:
   HOSPITAL_SERVICE_URL: http://hospital-service
   CASE_SERVICE_URL: http://case-service
   NOTIFICATION_SERVICE_URL: http://notification-service
+  NOTIFICATION_SERVICE_WS_URL: ws://notification-service
 
   USER_DB_HOST: host.docker.internal
   USER_DB_PORT: "5433"

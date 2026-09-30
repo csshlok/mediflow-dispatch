@@ -67,6 +67,10 @@ public class JwtAuthenticationFilter extends AbstractGatewayFilterFactory<JwtAut
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             return authHeader.substring(7);
         }
+        // Browsers cannot set headers on a WebSocket handshake, so the stream accepts ?access_token= instead
+        if (exchange.getRequest().getURI().getPath().startsWith("/ws/")) {
+            return exchange.getRequest().getQueryParams().getFirst("access_token");
+        }
         return null;
     }
 

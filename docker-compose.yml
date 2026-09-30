@@ -17,6 +17,7 @@ x-service-env: &service-env
   HOSPITAL_SERVICE_URL: http://hospital-service:8086
   CASE_SERVICE_URL: http://case-service:8087
   NOTIFICATION_SERVICE_URL: http://notification-service:8088
+  NOTIFICATION_SERVICE_WS_URL: ws://notification-service:8088
 
 # Only the API gateway is published. Business services are reachable solely through it.
 # Infrastructure ports bind to loopback; set BIND_ADDRESS=0.0.0.0 when the k8s manifests need host.docker.internal access.
