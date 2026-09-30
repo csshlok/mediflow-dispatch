@@ -18,6 +18,8 @@ x-service-env: &service-env
   CASE_SERVICE_URL: http://case-service:8087
   NOTIFICATION_SERVICE_URL: http://notification-service:8088
 
+# Only the API gateway is published. Business services are reachable solely through it.
+# Infrastructure ports bind to loopback; set BIND_ADDRESS=0.0.0.0 when the k8s manifests need host.docker.internal access.
 x-service-defaults: &service-defaults
   restart: unless-stopped
 
@@ -25,8 +27,8 @@ services:
   kafka:
     image: apache/kafka:3.7.0
     ports:
-      - "29092:29092"
-      - "39092:39092"
+      - "${BIND_ADDRESS:-127.0.0.1}:29092:29092"
+      - "${BIND_ADDRESS:-127.0.0.1}:39092:39092"
     environment:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
@@ -52,7 +54,7 @@ services:
   user-db:
     image: postgres:17-alpine
     ports:
-      - "5433:5432"
+      - "${BIND_ADDRESS:-127.0.0.1}:5433:5432"
     environment:
       POSTGRES_DB: user_db
       POSTGRES_USER: user
@@ -68,7 +70,7 @@ services:
   emergency-db:
     image: postgres:17-alpine
     ports:
-      - "5434:5432"
+      - "${BIND_ADDRESS:-127.0.0.1}:5434:5432"
     environment:
       POSTGRES_DB: emergency_request_db
       POSTGRES_USER: medical
@@ -84,7 +86,7 @@ services:
   ambulance-db:
     image: postgres:17-alpine
     ports:
-      - "5435:5432"
+      - "${BIND_ADDRESS:-127.0.0.1}:5435:5432"
     environment:
       POSTGRES_DB: ambulance_db
       POSTGRES_USER: medical
@@ -100,7 +102,7 @@ services:
   hospital-db:
     image: postgres:17-alpine
     ports:
-      - "5436:5432"
+      - "${BIND_ADDRESS:-127.0.0.1}:5436:5432"
     environment:
       POSTGRES_DB: hospital_db
       POSTGRES_USER: medical
@@ -116,7 +118,7 @@ services:
   matching-db:
     image: postgres:17-alpine
     ports:
-      - "5437:5432"
+      - "${BIND_ADDRESS:-127.0.0.1}:5437:5432"
     environment:
       POSTGRES_DB: matching_db
       POSTGRES_USER: medical
@@ -132,7 +134,7 @@ services:
   case-db:
     image: postgres:17-alpine
     ports:
-      - "5439:5432"
+      - "${BIND_ADDRESS:-127.0.0.1}:5439:5432"
     environment:
       POSTGRES_DB: case_db
       POSTGRES_USER: medical
@@ -148,7 +150,7 @@ services:
   notification-db:
     image: postgres:17-alpine
     ports:
-      - "5440:5432"
+      - "${BIND_ADDRESS:-127.0.0.1}:5440:5432"
     environment:
       POSTGRES_DB: notification_db
       POSTGRES_USER: medical
@@ -164,7 +166,7 @@ services:
   redis:
     image: redis:7-alpine
     ports:
-      - "6379:6379"
+      - "${BIND_ADDRESS:-127.0.0.1}:6379:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -177,8 +179,6 @@ services:
     build:
       context: .
       dockerfile: user-service/Dockerfile
-    ports:
-      - "8081:8081"
     environment:
       <<: *service-env
       SERVER_PORT: "8081"
@@ -207,8 +207,6 @@ services:
     build:
       context: .
       dockerfile: emergency-request-service/Dockerfile
-    ports:
-      - "8082:8082"
     environment:
       <<: *service-env
       SERVER_PORT: "8082"
@@ -235,8 +233,6 @@ services:
     build:
       context: .
       dockerfile: ambulance-service/Dockerfile
-    ports:
-      - "8083:8083"
     environment:
       <<: *service-env
       SERVER_PORT: "8083"
@@ -263,8 +259,6 @@ services:
     build:
       context: .
       dockerfile: location-service/Dockerfile
-    ports:
-      - "8084:8084"
     environment:
       <<: *service-env
       SERVER_PORT: "8084"
@@ -288,8 +282,6 @@ services:
     build:
       context: .
       dockerfile: hospital-service/Dockerfile
-    ports:
-      - "8086:8086"
     environment:
       <<: *service-env
       SERVER_PORT: "8086"
@@ -316,8 +308,6 @@ services:
     build:
       context: .
       dockerfile: matching-service/Dockerfile
-    ports:
-      - "8085:8085"
     environment:
       <<: *service-env
       SERVER_PORT: "8085"
@@ -352,8 +342,6 @@ services:
     build:
       context: .
       dockerfile: case-service/Dockerfile
-    ports:
-      - "8087:8087"
     environment:
       <<: *service-env
       SERVER_PORT: "8087"
@@ -380,8 +368,6 @@ services:
     build:
       context: .
       dockerfile: notification-service/Dockerfile
-    ports:
-      - "8088:8088"
     environment:
       <<: *service-env
       SERVER_PORT: "8088"
