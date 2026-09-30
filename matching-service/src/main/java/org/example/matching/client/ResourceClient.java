@@ -111,12 +111,12 @@ public class ResourceClient {
     }
 
     // Returns false when the hospital has no free bed (or no longer exists)
-    public boolean reserveHospitalBed(UUID hospitalId, String reservationKey) {
+    public boolean reserveHospitalBed(UUID hospitalId, String reservationKey, UUID emergencyId) {
         try {
             executeWithRetry(() -> restTemplate.exchange(
                     hospitalUrl + "/hospitals/" + hospitalId + "/reserve-bed",
                     HttpMethod.PATCH,
-                    new HttpEntity<>(keyHeader(reservationKey)),
+                    new HttpEntity<>(reserveHeaders(reservationKey, emergencyId)),
                     String.class
             ), "Reserve Hospital");
             return true;
@@ -133,6 +133,12 @@ public class ResourceClient {
                 new HttpEntity<>(keyHeader(reservationKey)),
                 String.class
         ), "Release Hospital");
+    }
+
+    private static HttpHeaders reserveHeaders(String reservationKey, UUID emergencyId) {
+        HttpHeaders headers = keyHeader(reservationKey);
+        headers.set("Emergency-Id", emergencyId.toString());
+        return headers;
     }
 
     private static HttpHeaders keyHeader(String reservationKey) {

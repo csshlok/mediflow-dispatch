@@ -10,7 +10,8 @@ import java.util.UUID;
 @Table(name = "bed_reservations")
 public class BedReservation {
 
-    public enum Status { RESERVED, RELEASED }
+    // DISCHARGED: the patient left and the bed was returned; RELEASED: the saga undid the reservation
+    public enum Status { RESERVED, RELEASED, DISCHARGED }
 
     @Id
     @Column(name = "reservation_key", length = 200)
@@ -18,6 +19,10 @@ public class BedReservation {
 
     @Column(name = "hospital_id", nullable = false)
     private UUID hospitalId;
+
+    // The emergency the bed is held for, so it can be discharged later
+    @Column(name = "emergency_id")
+    private UUID emergencyId;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
@@ -31,9 +36,10 @@ public class BedReservation {
 
     public BedReservation() {}
 
-    public BedReservation(String reservationKey, UUID hospitalId, Status status) {
+    public BedReservation(String reservationKey, UUID hospitalId, UUID emergencyId, Status status) {
         this.reservationKey = reservationKey;
         this.hospitalId = hospitalId;
+        this.emergencyId = emergencyId;
         this.status = status;
         this.createdAt = Instant.now();
         this.updatedAt = this.createdAt;
@@ -41,7 +47,13 @@ public class BedReservation {
 
     public String getReservationKey() { return reservationKey; }
     public UUID getHospitalId() { return hospitalId; }
+    public UUID getEmergencyId() { return emergencyId; }
     public Status getStatus() { return status; }
+
+    public void markDischarged() {
+        this.status = Status.DISCHARGED;
+        this.updatedAt = Instant.now();
+    }
 
     public void markReleased() {
         this.status = Status.RELEASED;

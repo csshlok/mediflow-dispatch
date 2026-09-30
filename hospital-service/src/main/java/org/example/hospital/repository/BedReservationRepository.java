@@ -7,11 +7,17 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 public interface BedReservationRepository extends JpaRepository<BedReservation, String> {
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select r from BedReservation r where r.reservationKey = :key")
     Optional<BedReservation> findByKeyForUpdate(@Param("key") String key);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select r from BedReservation r where r.hospitalId = :hospitalId and r.emergencyId = :emergencyId")
+    List<BedReservation> findForEmergencyForUpdate(@Param("hospitalId") UUID hospitalId, @Param("emergencyId") UUID emergencyId);
 }

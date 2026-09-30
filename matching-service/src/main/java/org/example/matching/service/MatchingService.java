@@ -173,7 +173,7 @@ public class MatchingService {
             saga.setHospitalReservation(candidate.toString(), reservationKey);
             saga = sagaRepository.save(saga);
 
-            if (resourceClient.reserveHospitalBed(candidate, reservationKey)) {
+            if (resourceClient.reserveHospitalBed(candidate, reservationKey, event.emergencyId())) {
                 saga.setState(SagaState.HOSPITAL_RESERVED);
                 return new HospitalChoice(sagaRepository.save(saga), findHospitalName(candidate, hospitals));
             }

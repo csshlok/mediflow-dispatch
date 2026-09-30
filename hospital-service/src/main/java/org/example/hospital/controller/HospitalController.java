@@ -36,10 +36,11 @@ public class HospitalController {
     @PatchMapping("/{id}/reserve-bed")
     public ResponseEntity<String> reserveBed(
             @PathVariable UUID id,
-            @RequestHeader(value = "Idempotency-Key", required = true) String idempotencyKey) {
+            @RequestHeader(value = "Idempotency-Key", required = true) String idempotencyKey,
+            @RequestHeader(value = "Emergency-Id", required = false) UUID emergencyId) {
 
         try {
-            service.reserveBed(id, idempotencyKey);
+            service.reserveBed(id, idempotencyKey, emergencyId);
             return ResponseEntity.ok("Bed reserved successfully");
         } catch (IllegalStateException e) {
             // No beds, forced failure, or a key that was already released
@@ -62,6 +63,16 @@ public class HospitalController {
         } catch (DataIntegrityViolationException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT).body("Concurrent release with the same key, retry");
         }
+    }
+
+    // Patient discharged: frees the bed held for this emergency (safe to repeat)
+    @PostMapping("/{id}/discharge/{emergencyId}")
+    public ResponseEntity<String> discharge(@PathVariable UUID id, @PathVariable UUID emergencyId) {
+        if (!service.discharge(id, emergencyId)) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body("No bed reservation for emergency " + emergencyId + " at hospital " + id);
+        }
+        return ResponseEntity.ok("Patient discharged, bed returned");
     }
 
     @PostMapping
