@@ -5,7 +5,7 @@ x-service-env: &service-env
   REDIS_HOST: redis
   REDIS_PORT: "6379"
   JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
-  JWT_EXPIRATION_MS: "86400000"
+  JWT_EXPIRATION_MS: "28800000"
   JWT_ISSUER: medical-emergency-coordination-system
   JWT_JWK_SET_URI: http://api-gateway:8080/.well-known/jwks.json
   TRACING_SAMPLING_PROBABILITY: "0.0"

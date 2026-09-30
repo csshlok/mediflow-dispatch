@@ -1,36 +1,29 @@
 package org.example.gateway.security;
 
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtParser;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-import javax.crypto.SecretKey;
-
 @Component
 public class JwtValidator {
 
-    @Value("${jwt.secret}")
-    private String secretKey;
+    private final JwtParser parser;
 
-    // 1. Validates the signature and throws an exception if tampered/expired
+    // Built once at startup, so a missing, malformed or too-short secret fails fast
+    public JwtValidator(@Value("${jwt.secret}") String secretKey,
+                        @Value("${medical.security.jwt.issuer}") String issuer) {
+        this.parser = Jwts.parser()
+                .verifyWith(Keys.hmacShaKeyFor(Decoders.BASE64.decode(secretKey)))
+                .requireIssuer(issuer)
+                .build();
+    }
+
+    // Validates signature, expiry and issuer; throws if the token is tampered, expired or foreign
     public Claims extractAllClaims(String token) {
-        return Jwts.parser()
-                .verifyWith(getSignInKey())
-                .build()
-                .parseSignedClaims(token)
-                .getPayload();
-    }
-
-    // 2. Extracts the role string you embedded earlier
-    public String extractRole(String token) {
-        return extractAllClaims(token).get("role", String.class);
-    }
-
-    private SecretKey getSignInKey() {
-        byte[] keyBytes = Decoders.BASE64.decode(secretKey);
-        return Keys.hmacShaKeyFor(keyBytes);
+        return parser.parseSignedClaims(token).getPayload();
     }
 }

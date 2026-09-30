@@ -12,7 +12,7 @@ data:
   TRACING_SAMPLING_PROBABILITY: "0.0"
   OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://host.docker.internal:4318/v1/traces
   JWT_ISSUER: medical-emergency-coordination-system
-  JWT_EXPIRATION_MS: "86400000"
+  JWT_EXPIRATION_MS: "28800000"
   JWT_JWK_SET_URI: http://api-gateway/.well-known/jwks.json
 
   USER_SERVICE_URL: http://user-service

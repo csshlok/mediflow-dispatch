@@ -20,3 +20,8 @@ management:
 jwt:
   secret: dGVzdC1vbmx5LWtleS1ub3QtYS1yZWFsLXNlY3JldC0wMTIzNDU2Nzg5YWJjZGVm
   expiration: ${JWT_EXPIRATION_MS:86400000}
+
+medical:
+  security:
+    jwt:
+      issuer: medical-emergency-coordination-system
