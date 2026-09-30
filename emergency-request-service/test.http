@@ -7,14 +7,27 @@
 @paramedicToken = paste-paramedic-token
 @adminToken = paste-admin-token
 @samplePassword = change-me-sample
+@adminEmail = admin@mediflow.local
 @adminPassword = change-me-admin
 ### ==========================================
 ### 0. SETUP: CREATE OUR USERS
+### Registration is admin-only. Log in as the bootstrap admin
+### (BOOTSTRAP_ADMIN_EMAIL / BOOTSTRAP_ADMIN_PASSWORD) and paste the token into @adminToken.
 ### ==========================================
+
+### Login as Bootstrap Admin
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{adminEmail}}",
+  "password": "{{adminPassword}}"
+}
 
 ### Create Dispatcher
 POST {{host}}/api/auth/register
 Content-Type: application/json
+Authorization: Bearer {{adminToken}}
 
 {
   "name": "Dave Dispatcher",
@@ -26,23 +39,13 @@ Content-Type: application/json
 ### Create Paramedic
 POST {{host}}/api/auth/register
 Content-Type: application/json
+Authorization: Bearer {{adminToken}}
 
 {
   "name": "Pam Paramedic",
   "email": "paramedic@mediflow.com",
   "password": "{{samplePassword}}",
   "role": "PARAMEDIC"
-}
-
-### Create Admin
-POST {{host}}/api/auth/register
-Content-Type: application/json
-
-{
-  "name": "Alice Admin",
-  "email": "admin@mediflow.com",
-  "password": "{{adminPassword}}",
-  "role": "ADMIN"
 }
 
 
@@ -124,7 +127,7 @@ POST {{host}}/api/auth/login
 Content-Type: application/json
 
 {
-  "email": "admin@mediflow.com",
+  "email": "{{adminEmail}}",
   "password": "{{adminPassword}}"
 }
 

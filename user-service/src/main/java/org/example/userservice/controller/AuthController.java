@@ -4,8 +4,10 @@ import org.example.userservice.dto.LoginRequest;
 import org.example.userservice.dto.LoginResponse;
 import org.example.userservice.dto.RegisterRequest;
 import org.example.userservice.entity.User;
+import org.example.userservice.enums.Role;
 import org.example.userservice.service.JwtService;
 import org.example.userservice.service.UserService;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -22,11 +24,32 @@ public class AuthController {
         this.jwtService = jwtService;
     }
 
+    // Only an authenticated ADMIN may create accounts, so nobody can self-assign a privileged role
     @PostMapping("/register")
-    public ResponseEntity<String> register(@RequestBody RegisterRequest request) {
+    public ResponseEntity<String> register(
+            @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authHeader,
+            @RequestBody RegisterRequest request) {
+
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Admin token required");
+        }
+
+        Role callerRole;
+        try {
+            callerRole = jwtService.extractRole(authHeader.substring(7));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid or expired token");
+        }
+
+        if (callerRole != Role.ADMIN) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Only admins can register users");
+        }
+
         try {
             userService.registerUser(request);
             return ResponseEntity.status(HttpStatus.CREATED).body("User registered successfully");
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
         } catch (IllegalStateException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
         }

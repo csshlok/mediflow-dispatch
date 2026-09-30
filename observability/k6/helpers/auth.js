@@ -21,7 +21,7 @@ export function authHeaders(token, extra = {}) {
   });
 }
 
-export function registerUser(baseUrl, role, emailPrefix) {
+export function registerUser(baseUrl, adminToken, role, emailPrefix) {
   const email = `${unique(emailPrefix)}@mediflow.test`;
   const body = JSON.stringify({
     name: `${role} Load Test User`,
@@ -31,7 +31,7 @@ export function registerUser(baseUrl, role, emailPrefix) {
   });
 
   const res = http.post(`${baseUrl}/api/auth/register`, body, {
-    headers: jsonHeaders(),
+    headers: authHeaders(adminToken),
   });
 
   check(res, {
@@ -58,12 +58,17 @@ export function login(baseUrl, credentials) {
   return JSON.parse(res.body).token;
 }
 
+// Registration is admin-only, so log in as the bootstrap admin first
 export function setupUsers(baseUrl) {
-  const admin = registerUser(baseUrl, 'ADMIN', 'admin-load');
-  const dispatcher = registerUser(baseUrl, 'DISPATCHER', 'dispatcher-load');
+  if (!__ENV.ADMIN_EMAIL || !__ENV.ADMIN_PASSWORD) {
+    throw new Error('Set ADMIN_EMAIL and ADMIN_PASSWORD to the bootstrap admin credentials');
+  }
+
+  const adminToken = login(baseUrl, { email: __ENV.ADMIN_EMAIL, password: __ENV.ADMIN_PASSWORD });
+  const dispatcher = registerUser(baseUrl, adminToken, 'DISPATCHER', 'dispatcher-load');
 
   return {
-    adminToken: login(baseUrl, admin),
+    adminToken,
     dispatcherToken: login(baseUrl, dispatcher),
   };
 }

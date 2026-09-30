@@ -12,6 +12,7 @@ Create or update them with the keys expected by the service `application.yaml` f
 - `CASE_DB_USERNAME`, `CASE_DB_PASSWORD`
 - `NOTIFICATION_DB_USERNAME`, `NOTIFICATION_DB_PASSWORD`
 - `JWT_SECRET`
+- `BOOTSTRAP_ADMIN_EMAIL`, `BOOTSTRAP_ADMIN_PASSWORD` (in `jwt-secret`; user-service creates this admin when none exists, since registration is admin-only)
 
 Apply them locally with:
 

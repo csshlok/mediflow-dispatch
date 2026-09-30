@@ -40,13 +40,13 @@ kubectl -n mediflow create secret generic grafana-secret --from-literal=GF_SECUR
 Run with Docker:
 
 ```powershell
-docker run --rm -v "${PWD}:/workspace" -w /workspace grafana/k6 run observability/k6/scenarios/high-traffic.js
+docker run --rm -v "${PWD}:/workspace" -w /workspace -e ADMIN_EMAIL=<admin email> -e ADMIN_PASSWORD=<admin password> grafana/k6 run observability/k6/scenarios/high-traffic.js
 ```
 
 For Kubernetes via the gateway:
 
 ```powershell
-docker run --rm -v "${PWD}:/workspace" -w /workspace -e BASE_URL=http://host.docker.internal:30080 grafana/k6 run observability/k6/scenarios/high-traffic.js
+docker run --rm -v "${PWD}:/workspace" -w /workspace -e ADMIN_EMAIL=<admin email> -e ADMIN_PASSWORD=<admin password> -e BASE_URL=http://host.docker.internal:30080 grafana/k6 run observability/k6/scenarios/high-traffic.js
 ```
 
 The scripts create their own admin and dispatcher users, seed test resources, and send requests through the API gateway.

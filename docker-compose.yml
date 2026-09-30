@@ -187,6 +187,8 @@ services:
       USER_DB_NAME: user_db
       USER_DB_USERNAME: user
       USER_DB_PASSWORD: ${USER_DB_PASSWORD:?set USER_DB_PASSWORD in .env}
+      BOOTSTRAP_ADMIN_EMAIL: ${BOOTSTRAP_ADMIN_EMAIL:-}
+      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-}
     depends_on:
       kafka:
         condition: service_healthy
