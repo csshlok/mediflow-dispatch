@@ -2,12 +2,17 @@ package org.example.userservice.service;
 
 import org.example.userservice.dto.LoginRequest;
 import org.example.userservice.dto.RegisterRequest;
+import org.example.userservice.dto.UserSummary;
 import org.example.userservice.entity.User;
 import org.example.userservice.enums.Role;
 import org.example.userservice.repository.UserRepository;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.NoSuchElementException;
+import java.util.UUID;
 
 @Service
 public class UserService {
@@ -30,6 +35,9 @@ public class UserService {
         if (request.password() == null || request.password().length() < MIN_PASSWORD_LENGTH) {
             throw new IllegalArgumentException("password must be at least " + MIN_PASSWORD_LENGTH + " characters");
         }
+        if (request.ambulanceId() != null && request.role() != Role.PARAMEDIC) {
+            throw new IllegalArgumentException("ambulanceId can only be set for PARAMEDIC users");
+        }
 
         // 2. Check if email already exists
         if (userRepository.findByEmail(request.email()).isPresent()) {
@@ -41,6 +49,7 @@ public class UserService {
         user.setName(request.name());
         user.setEmail(request.email());
         user.setRole(request.role());
+        user.setAmbulanceId(request.ambulanceId());
         user.setPasswordHash(passwordEncoder.encode(request.password()));
 
         // 4. Save to Database (the unique constraint catches concurrent registrations of the same email)
@@ -56,8 +65,23 @@ public class UserService {
         if (userRepository.existsByRole(Role.ADMIN)) {
             return false;
         }
-        registerUser(new RegisterRequest(name, email, rawPassword, Role.ADMIN));
+        registerUser(new RegisterRequest(name, email, rawPassword, Role.ADMIN, null));
         return true;
+    }
+
+    // Assigns (or clears, with null) the ambulance a paramedic works on; takes effect at their next login
+    public UserSummary assignAmbulance(Long userId, UUID ambulanceId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new NoSuchElementException("User not found: " + userId));
+        if (user.getRole() != Role.PARAMEDIC) {
+            throw new IllegalArgumentException("Only PARAMEDIC users can be assigned to an ambulance");
+        }
+        user.setAmbulanceId(ambulanceId);
+        return UserSummary.of(userRepository.save(user));
+    }
+
+    public List<UserSummary> listUsers() {
+        return userRepository.findAll().stream().map(UserSummary::of).toList();
     }
 
     public User verifyLogin(LoginRequest request) {

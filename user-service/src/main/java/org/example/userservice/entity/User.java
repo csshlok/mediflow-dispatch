@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import org.example.userservice.enums.Role;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
 @Table(name = "users")
@@ -28,6 +29,9 @@ public class User {
     @Column(nullable = false)
     private Role role;
 
+    // Set for paramedics: the only ambulance they may record pickups and deliveries for
+    private UUID ambulanceId;
+
     @Column(updatable = false)
     private LocalDateTime createdAt;
 
@@ -47,5 +51,7 @@ public class User {
     public void setPasswordHash(String passwordHash) { this.passwordHash = passwordHash; }
     public Role getRole() { return role; }
     public void setRole(Role role) { this.role = role; }
+    public UUID getAmbulanceId() { return ambulanceId; }
+    public void setAmbulanceId(UUID ambulanceId) { this.ambulanceId = ambulanceId; }
     public LocalDateTime getCreatedAt() { return createdAt; }
 }

@@ -180,3 +180,22 @@ Authorization: Bearer {{adminToken}}
   "latitude": 28.6150,
   "longitude": 77.2100
 }
+
+### ==========================================
+### ASSIGN THE PARAMEDIC TO AN AMBULANCE
+### Paramedics may only record pickups/deliveries for their assigned ambulance.
+### Find the user id with GET /api/auth/users, then log in again to get a token carrying the assignment.
+### ==========================================
+
+### List users
+GET {{host}}/api/auth/users
+Authorization: Bearer {{adminToken}}
+
+### Assign
+PUT {{host}}/api/auth/users/2/ambulance
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "ambulanceId": "paste-ambulance-id"
+}

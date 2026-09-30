@@ -1,6 +1,10 @@
 package org.example.gateway.filter;
 
+import io.jsonwebtoken.Claims;
+import org.example.gateway.security.AccessPolicy;
 import org.example.gateway.security.JwtValidator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.cloud.gateway.filter.GatewayFilter;
 import org.springframework.cloud.gateway.filter.factory.AbstractGatewayFilterFactory;
 import org.springframework.http.HttpHeaders;
@@ -9,13 +13,10 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
-import java.util.regex.Pattern;
-
 @Component
 public class JwtAuthenticationFilter extends AbstractGatewayFilterFactory<JwtAuthenticationFilter.Config> {
 
-    private static final Pattern PARAMEDIC_ACTION =
-            Pattern.compile("^/api/ambulances/[^/]+/(pickup/[^/]+|deliver/[^/]+/[^/]+)$");
+    private static final Logger log = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
 
     private final JwtValidator jwtValidator;
 
@@ -32,20 +33,16 @@ public class JwtAuthenticationFilter extends AbstractGatewayFilterFactory<JwtAut
     public GatewayFilter apply(Config config) {
         return (exchange, chain) -> {
 
-            // 1. Extract the Authorization Header
-            String authHeader = exchange.getRequest().getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
-
-            // 2. Check if it's missing (null) OR incorrectly formatted
-            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            // 1. Extract the bearer token
+            String token = extractToken(exchange);
+            if (token == null) {
                 return onError(exchange, "Missing or Invalid Authorization Header", HttpStatus.UNAUTHORIZED);
             }
 
-            // 2. Extract and Validate Token
-            String token = authHeader.substring(7);
-            String userRole;
+            // 2. Validate signature, expiry and issuer
+            Claims claims;
             try {
-                // If this doesn't crash, the token signature and expiration are completely valid
-                userRole = jwtValidator.extractRole(token);
+                claims = jwtValidator.extractAllClaims(token);
             } catch (Exception e) {
                 return onError(exchange, "Invalid or Expired JWT Token", HttpStatus.UNAUTHORIZED);
             }
@@ -53,8 +50,10 @@ public class JwtAuthenticationFilter extends AbstractGatewayFilterFactory<JwtAut
             // 3. Enforce the Authorization Matrix (RBAC)
             String path = exchange.getRequest().getURI().getPath();
             String method = exchange.getRequest().getMethod().name();
+            String role = claims.get("role", String.class);
+            String ambulanceId = claims.get("ambulanceId", String.class);
 
-            if (!isAuthorized(userRole, path, method)) {
+            if (!AccessPolicy.isAllowed(role, ambulanceId, method, path)) {
                 return onError(exchange, "Insufficient permissions for this action", HttpStatus.FORBIDDEN);
             }
 
@@ -63,28 +62,18 @@ public class JwtAuthenticationFilter extends AbstractGatewayFilterFactory<JwtAut
         };
     }
 
-    // Role-Based Access Control Logic
-    private boolean isAuthorized(String role, String path, String method) {
-        if ("ADMIN".equals(role)) {
-            return true; // Admins can do everything
+    private static String extractToken(ServerWebExchange exchange) {
+        String authHeader = exchange.getRequest().getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            return authHeader.substring(7);
         }
-
-        if ("DISPATCHER".equals(role)) {
-            return path.startsWith("/api/emergency") && method.equals("POST");
-        }
-
-        if ("PARAMEDIC".equals(role)) {
-            // Paramedics can only record pickups and deliveries; reserve/release are internal saga calls
-            return method.equals("POST") && PARAMEDIC_ACTION.matcher(path).matches();
-        }
-
-        return false;
+        return null;
     }
 
     // Helper method to return custom errors cleanly
     private Mono<Void> onError(ServerWebExchange exchange, String err, HttpStatus httpStatus) {
         exchange.getResponse().setStatusCode(httpStatus);
-        System.err.println("🚨 Gateway Blocked Request: " + err);
+        log.debug("Gateway blocked {} {}: {}", exchange.getRequest().getMethod(), exchange.getRequest().getURI().getPath(), err);
         return exchange.getResponse().setComplete();
     }
 }

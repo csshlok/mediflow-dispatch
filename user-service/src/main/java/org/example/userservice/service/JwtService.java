@@ -27,6 +27,10 @@ public class JwtService {
     public String generateToken(User user) {
         Map<String, Object> extraClaims = new HashMap<>();
         extraClaims.put("role", user.getRole().name());
+        if (user.getAmbulanceId() != null) {
+            // The gateway only lets this paramedic act on this ambulance
+            extraClaims.put("ambulanceId", user.getAmbulanceId().toString());
+        }
 
         return Jwts.builder()
                 .claims(extraClaims)
