@@ -3,8 +3,9 @@ package org.example.hospital.controller;
 import org.example.hospital.entity.Hospital;
 import org.example.hospital.entity.IdempotentRequest;
 import org.example.hospital.repository.IdempotentRequestRepository;
+import org.example.hospital.service.HospitalNotFoundException;
 import org.example.hospital.service.HospitalService;
-import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -31,45 +32,35 @@ public class HospitalController {
         return ResponseEntity.ok(service.getAvailableHospitals(minBeds));
     }
 
+    // The Idempotency-Key doubles as the reservation key the saga later uses to release the bed
     @PatchMapping("/{id}/reserve-bed")
     public ResponseEntity<String> reserveBed(
             @PathVariable UUID id,
             @RequestHeader(value = "Idempotency-Key", required = true) String idempotencyKey) {
 
-        // 🛡️ 1. Idempotency Check: Did we already process this exact reservation?
-        Optional<IdempotentRequest> existingRequest = idempotencyRepository.findById(idempotencyKey);
-
-        if (existingRequest.isPresent()) {
-            System.out.println("♻️ Duplicate PATCH intercepted. Returning cached response for key: " + idempotencyKey);
-            return ResponseEntity
-                    .status(existingRequest.get().getResponseStatus())
-                    .body(existingRequest.get().getResponsePayload());
+        try {
+            service.reserveBed(id, idempotencyKey);
+            return ResponseEntity.ok("Bed reserved successfully");
+        } catch (IllegalStateException e) {
+            // No beds, forced failure, or a key that was already released
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
+        } catch (DataIntegrityViolationException e) {
+            // Two concurrent requests with the same key; the other one won
+            return ResponseEntity.status(HttpStatus.CONFLICT).body("Concurrent reservation with the same key, retry");
         }
+    }
+
+    // Saga compensation
+    @PostMapping("/{id}/release-bed")
+    public ResponseEntity<String> releaseBed(
+            @PathVariable UUID id,
+            @RequestHeader(value = "Idempotency-Key", required = true) String idempotencyKey) {
 
         try {
-            // ⚙️ 2. Execute Business Logic
-            service.reserveBed(id);
-            String successMessage = "Bed reserved successfully";
-
-            // 💾 3. Save successful Idempotency Key
-            idempotencyRepository.save(new IdempotentRequest(idempotencyKey, successMessage, HttpStatus.OK.value()));
-            return ResponseEntity.ok(successMessage);
-
-        } catch (IllegalStateException e) {
-            // Handled case: No beds available (e.g., standard business logic failure)
-            String errorMessage = e.getMessage();
-
-            // We save this failure because repeating the request will just yield the exact same failure
-            idempotencyRepository.save(new IdempotentRequest(idempotencyKey, errorMessage, HttpStatus.CONFLICT.value()));
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(errorMessage);
-
-        } catch (OptimisticLockingFailureException e) {
-            // 🚨 4. OPTIMISTIC LOCK TRIPPED!
-            System.err.println("Collision detected! Bed was reserved by another thread.");
-            String conflictMessage = "Bed reservation collision. Please try again.";
-
-            // Note: We do NOT save an idempotency key here. We want the client to fetch fresh data and retry!
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(conflictMessage);
+            service.releaseBed(id, idempotencyKey);
+            return ResponseEntity.ok("Bed released");
+        } catch (DataIntegrityViolationException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body("Concurrent release with the same key, retry");
         }
     }
 
@@ -82,17 +73,26 @@ public class HospitalController {
         Optional<IdempotentRequest> existingRequest = idempotencyRepository.findById(idempotencyKey);
 
         if (existingRequest.isPresent()) {
-            System.out.println("♻️ Duplicate POST intercepted. Returning cached response for key: " + idempotencyKey);
-            // If it's a retry, we just return a 201 Created to satisfy the client without duplicating data
-            return ResponseEntity.status(existingRequest.get().getResponseStatus()).build();
+            return ResponseEntity.status(existingRequest.get().getResponseStatus())
+                    .body(existingRequest.get().getResponsePayload());
         }
 
         // ⚙️ 2. Execute Business Logic
         Hospital savedHospital = service.registerHospital(hospital);
 
         // 💾 3. Save successful Idempotency Key
-        idempotencyRepository.save(new IdempotentRequest(idempotencyKey, "Hospital registered", HttpStatus.CREATED.value()));
+        idempotencyRepository.save(new IdempotentRequest(idempotencyKey, "Hospital registered: " + savedHospital.getId(), HttpStatus.CREATED.value()));
 
         return ResponseEntity.status(HttpStatus.CREATED).body(savedHospital);
+    }
+
+    @ExceptionHandler(HospitalNotFoundException.class)
+    public ResponseEntity<String> handleNotFound(HospitalNotFoundException e) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<String> handleBadRequest(IllegalArgumentException e) {
+        return ResponseEntity.badRequest().body(e.getMessage());
     }
 }
