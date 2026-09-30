@@ -1,6 +1,7 @@
 package org.example.emergencyrequest.service;
 
 import org.example.emergencyrequest.entity.EmergencyRequest;
+import org.example.emergencyrequest.entity.EmergencyStatus;
 import org.example.emergencyrequest.entity.IdempotentRequest;
 import org.example.emergencyrequest.producer.EmergencyRequestProducer;
 import org.example.emergencyrequest.repository.EmergencyRequestRepository;
@@ -63,7 +64,8 @@ public class EmergencyRequestService {
         entity.setSeverity(requestDTO.severity());
         entity.setLatitude(requestDTO.latitude());
         entity.setLongitude(requestDTO.longitude());
-        entity.setStatus("PENDING_MATCH");
+        entity.setStatus(EmergencyStatus.PENDING_MATCH.name());
+        entity.setUpdatedAt(Instant.now());
 
         EmergencyRequest savedEntity = repository.save(entity);
 

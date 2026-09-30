@@ -1,7 +1,10 @@
 package org.example.emergencyrequest.controller;
 
+import org.example.emergencyrequest.entity.EmergencyRequest;
+import org.example.emergencyrequest.entity.EmergencyStatus;
 import org.example.emergencyrequest.entity.IdempotentRequest;
 import org.example.emergencyrequest.service.EmergencyRequestService;
+import org.example.emergencyrequest.service.EmergencyStatusService;
 import org.example.shared.dto.EmergencyRequestDTO;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
@@ -9,14 +12,32 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+import java.util.UUID;
+
 @RestController
 @RequestMapping("/emergency")
 public class EmergencyRequestController {
 
     private final EmergencyRequestService service;
 
-    public EmergencyRequestController(EmergencyRequestService service) {
+    private final EmergencyStatusService statusService;
+
+    public EmergencyRequestController(EmergencyRequestService service, EmergencyStatusService statusService) {
         this.service = service;
+        this.statusService = statusService;
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<EmergencyRequest> getEmergency(@PathVariable UUID id) {
+        return statusService.find(id)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    @GetMapping
+    public ResponseEntity<List<EmergencyRequest>> listEmergencies(@RequestParam(required = false) EmergencyStatus status) {
+        return ResponseEntity.ok(statusService.list(status));
     }
 
     @PostMapping
