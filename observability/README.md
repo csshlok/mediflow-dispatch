@@ -17,6 +17,14 @@ This folder contains the simplified Phase 6 observability setup:
   - Matching Service Replicas
   - Pod Recovery Time evidence
 
+## Docker Compose Setup
+
+`docker compose up` also starts Prometheus and Grafana. They reach the services over the internal compose network,
+so the service ports stay unpublished.
+
+- Grafana: `http://localhost:3000`, user `admin`, password `GRAFANA_ADMIN_PASSWORD` from `.env`
+- Prometheus: `http://localhost:9090`
+
 ## Kubernetes Setup
 
 Apply the stack:
