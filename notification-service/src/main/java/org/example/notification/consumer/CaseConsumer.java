@@ -1,5 +1,6 @@
 package org.example.notification.consumer;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.example.notification.entity.ProcessedEvent;
 import org.example.notification.entity.ProcessedEventId;
@@ -32,30 +33,25 @@ public class CaseConsumer {
 
     @KafkaListener(topics = KafkaTopics.CASE_EVENTS, groupId = "notification-service-group")
     @Transactional
-    public void onCaseCreated(String jsonPayload) {
-        try {
-            // 3. Translate string to Java record
-            CaseCreatedEvent event = objectMapper.readValue(jsonPayload, CaseCreatedEvent.class);
+    public void onCaseCreated(String jsonPayload) throws JsonProcessingException {
+        // 3. Translate string to Java record
+        CaseCreatedEvent event = objectMapper.readValue(jsonPayload, CaseCreatedEvent.class);
 
-            String eventIdString = event.eventId().toString();
-            ProcessedEventId id = new ProcessedEventId(eventIdString, CONSUMER_NAME);
+        String eventIdString = event.eventId().toString();
+        ProcessedEventId id = new ProcessedEventId(eventIdString, CONSUMER_NAME);
 
-            if (processedEventRepository.existsById(id)) {
-                System.out.println("⚠️ Duplicate CaseCreated event detected! Skipping: " + eventIdString);
-                return;
-            }
-
-            notificationService.notify(
-                    "Emergency Created: " + event.emergencyId(),
-                    "Ambulance " + event.ambulanceId() + " Assigned. Hospital: " + event.hospitalName(),
-                    "Case ID: " + event.caseId()
-            );
-
-            processedEventRepository.save(new ProcessedEvent(eventIdString, CONSUMER_NAME, Instant.now()));
-
-        } catch (Exception e) {
-            System.err.println("⚠️ Failed to process notification: " + e.getMessage());
-            e.printStackTrace();
+        if (processedEventRepository.existsById(id)) {
+            System.out.println("⚠️ Duplicate CaseCreated event detected! Skipping: " + eventIdString);
+            return;
         }
+
+        notificationService.notify(
+                "Emergency Created: " + event.emergencyId(),
+                "Ambulance " + event.ambulanceId() + " Assigned. Hospital: " + event.hospitalName(),
+                "Case ID: " + event.caseId()
+        );
+
+        processedEventRepository.save(new ProcessedEvent(eventIdString, CONSUMER_NAME, Instant.now()));
+
     }
 }
