@@ -1,5 +1,7 @@
 package org.example.notification.consumer;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.example.notification.entity.ProcessedEvent;
@@ -16,6 +18,8 @@ import java.time.Instant;
 
 @Component
 public class CaseConsumer {
+
+    private static final Logger log = LoggerFactory.getLogger(CaseConsumer.class);
 
     private final NotificationService notificationService;
     private final ProcessedEventRepository processedEventRepository;
@@ -41,7 +45,7 @@ public class CaseConsumer {
         ProcessedEventId id = new ProcessedEventId(eventIdString, CONSUMER_NAME);
 
         if (processedEventRepository.existsById(id)) {
-            System.out.println("⚠️ Duplicate CaseCreated event detected! Skipping: " + eventIdString);
+            log.info("⚠️ Duplicate CaseCreated event detected! Skipping: " + eventIdString);
             return;
         }
 

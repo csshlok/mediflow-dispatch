@@ -1,5 +1,7 @@
 package org.example.notification.consumer;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -18,6 +20,8 @@ import java.time.Instant;
 
 @Component
 public class PatientDispatchConsumer {
+
+    private static final Logger log = LoggerFactory.getLogger(PatientDispatchConsumer.class);
 
     private final ProcessedEventRepository processedEventRepository;
     private final ObjectMapper objectMapper;
@@ -39,7 +43,7 @@ public class PatientDispatchConsumer {
     public void notifyPickup(String jsonPayload) throws JsonProcessingException {
         JsonNode node = objectMapper.readTree(jsonPayload);
         if (!node.has("pickedUpAt")) {
-            //System.out.println("Notification Service received non-pickup event on ambulance-events; skipping.");
+            //log.info("Notification Service received non-pickup event on ambulance-events; skipping.");
             return;
         }
 
@@ -51,7 +55,7 @@ public class PatientDispatchConsumer {
 
         // 🛡️ 2. Idempotency Check
         if (processedEventRepository.existsById(id)) {
-            System.out.println("⚠️ Duplicate PatientPickedUp event detected! Skipping: " + eventIdString);
+            log.info("⚠️ Duplicate PatientPickedUp event detected! Skipping: " + eventIdString);
             return;
         }
 
@@ -83,7 +87,7 @@ public class PatientDispatchConsumer {
 
             // 🛡️ 2. Idempotency Check
             if (processedEventRepository.existsById(id)) {
-                System.out.println("⚠️ Duplicate PatientDelivered event detected! Skipping: " + eventIdString);
+                log.info("⚠️ Duplicate PatientDelivered event detected! Skipping: " + eventIdString);
                 return;
             }
 
@@ -98,7 +102,7 @@ public class PatientDispatchConsumer {
             processedEventRepository.save(new ProcessedEvent(eventIdString, CONSUMER_NAME, Instant.now()));
         } else {
             // Unknown or not a PatientDeliveredEvent - ignore or log for now
-            //System.out.println("ℹ️ Received non-delivery event on hospital-events topic; skipping. Raw: " + jsonPayload);
+            //log.info("ℹ️ Received non-delivery event on hospital-events topic; skipping. Raw: " + jsonPayload);
         }
 
     }

@@ -1,5 +1,7 @@
 package org.example.case_.service;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.example.case_.entity.CaseCorrelation;
 import org.example.case_.entity.EmergencyCase;
 import org.example.case_.producer.CaseProducer;
@@ -16,6 +18,8 @@ import java.util.UUID;
 
 @Service
 public class CaseService {
+
+    private static final Logger log = LoggerFactory.getLogger(CaseService.class);
 
     private final CaseRepository caseRepository;
     private final CaseCorrelationRepository correlationRepository;
@@ -95,6 +99,6 @@ public class CaseService {
         );
         producer.publishCaseCreated(caseCreated);
 
-        System.out.println("Official Emergency Case saved. ID: " + savedCase.getCaseId());
+        log.info("Official Emergency Case saved. ID: " + savedCase.getCaseId());
     }
 }

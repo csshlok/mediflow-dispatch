@@ -1,5 +1,7 @@
 package org.example.case_.consumer;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -17,6 +19,8 @@ import java.time.Instant;
 
 @Component
 public class HospitalAssignedConsumer {
+
+    private static final Logger log = LoggerFactory.getLogger(HospitalAssignedConsumer.class);
 
     private final CaseService caseService;
     private final ProcessedEventRepository processedEventRepository;
@@ -38,7 +42,7 @@ public class HospitalAssignedConsumer {
     public void consumeHospital(String jsonPayload) throws JsonProcessingException {
         JsonNode node = objectMapper.readTree(jsonPayload);
         if (!node.has("hospitalName")) {
-            System.out.println("Case Service received non-HospitalAssigned event on hospital-events; skipping.");
+            log.info("Case Service received non-HospitalAssigned event on hospital-events; skipping.");
             return;
         }
 
@@ -51,12 +55,12 @@ public class HospitalAssignedConsumer {
 
         // 1. THE BOUNCER: Check if this consumer has already seen this specific event
         if (processedEventRepository.existsById(id)) {
-            System.out.println("⚠️ Duplicate event detected! Skipping HospitalAssignedEvent: " + eventIdString);
+            log.info("⚠️ Duplicate event detected! Skipping HospitalAssignedEvent: " + eventIdString);
             return;
         }
 
         // 2. THE BUSINESS LOGIC: Process the hospital assignment
-        System.out.println("🏥 Case Service received new HospitalAssigned for " + event.emergencyId());
+        log.info("🏥 Case Service received new HospitalAssigned for " + event.emergencyId());
         caseService.onHospitalAssigned(event); // Kept your exact method call!
 
         // 3. THE RECEIPT: Save to DB so we never process it again

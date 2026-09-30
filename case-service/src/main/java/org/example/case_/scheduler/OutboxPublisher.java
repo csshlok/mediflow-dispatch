@@ -1,5 +1,7 @@
 package org.example.case_.scheduler;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.example.case_.entity.OutboxEvent;
 import org.example.case_.repository.OutboxRepository;
 import io.micrometer.core.instrument.Counter;
@@ -15,6 +17,8 @@ import java.util.concurrent.TimeUnit;
 
 @Component
 public class OutboxPublisher {
+
+    private static final Logger log = LoggerFactory.getLogger(OutboxPublisher.class);
 
     private static final long SEND_TIMEOUT_SECONDS = 10;
 
@@ -54,7 +58,7 @@ public class OutboxPublisher {
                     Thread.currentThread().interrupt();
                 }
                 // Stays PENDING and is retried on the next run
-                System.err.println("⚠️ Outbox failed to publish " + event.getEventType() + " for Emergency ID: "
+                log.warn("⚠️ Outbox failed to publish " + event.getEventType() + " for Emergency ID: "
                         + event.getAggregateId() + " - " + e.getMessage());
                 return;
             }

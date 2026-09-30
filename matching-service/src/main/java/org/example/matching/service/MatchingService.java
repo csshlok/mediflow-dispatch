@@ -1,5 +1,7 @@
 package org.example.matching.service;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.example.matching.client.ResourceClient;
 import org.example.matching.entity.DispatchSaga;
 import org.example.matching.entity.ProcessedEvent;
@@ -31,6 +33,8 @@ import java.util.UUID;
 // committed as it happens so a crash leaves an accurate record of what must be released.
 @Service
 public class MatchingService {
+
+    private static final Logger log = LoggerFactory.getLogger(MatchingService.class);
 
     private static final EnumSet<SagaState> IN_PROGRESS_STATES = EnumSet.of(
             SagaState.STARTED, SagaState.AMBULANCE_RESERVED, SagaState.HOSPITAL_RESERVED);
@@ -109,7 +113,7 @@ public class MatchingService {
                 dispatchLatency.record(Duration.between(event.createdAt(), Instant.now()));
             }
         } catch (RuntimeException e) {
-            System.err.println("Match failed for Emergency " + emergencyId + ": " + e.getMessage());
+            log.warn("Match failed for Emergency " + emergencyId + ": " + e.getMessage());
             // Reload: the database holds the latest recorded reservations, the local copy may be behind
             sagaRepository.findById(sagaId).ifPresent(this::compensateAfterFailure);
             throw new DispatchFailedException("Dispatch failed for emergency " + emergencyId, e);
@@ -123,10 +127,10 @@ public class MatchingService {
             try {
                 compensate(saga);
                 sagaCompensated.increment();
-                System.err.println("Recovered stale saga for emergency " + saga.getEmergencyId()
+                log.warn("Recovered stale saga for emergency " + saga.getEmergencyId()
                         + "; it will be dispatched again when its event is retried (check the -dlq topic if retries are exhausted)");
             } catch (RuntimeException e) {
-                System.err.println("Recovery of saga for emergency " + saga.getEmergencyId() + " failed, will retry: " + e.getMessage());
+                log.warn("Recovery of saga for emergency " + saga.getEmergencyId() + " failed, will retry: " + e.getMessage());
             }
         }
     }
@@ -208,13 +212,13 @@ public class MatchingService {
             compensate(saga);
             sagaCompensated.increment();
         } catch (RuntimeException ex) {
-            System.err.println("CRITICAL: compensation failed for emergency " + saga.getEmergencyId()
+            log.error("CRITICAL: compensation failed for emergency " + saga.getEmergencyId()
                     + "; the recovery job will retry: " + ex.getMessage());
             try {
                 saga.setState(SagaState.FAILED);
                 sagaRepository.save(saga);
             } catch (RuntimeException saveEx) {
-                System.err.println("Could not mark saga FAILED (it keeps its last recorded state): " + saveEx.getMessage());
+                log.warn("Could not mark saga FAILED (it keeps its last recorded state): " + saveEx.getMessage());
             }
             sagaFailed.increment();
         }

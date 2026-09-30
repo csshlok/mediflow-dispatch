@@ -1,5 +1,7 @@
 package org.example.case_.producer;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.example.case_.entity.OutboxEvent;
 import org.example.case_.repository.OutboxRepository;
@@ -11,6 +13,8 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class CaseProducer {
+
+    private static final Logger log = LoggerFactory.getLogger(CaseProducer.class);
 
     private final OutboxRepository outboxRepository;
     private final ObjectMapper objectMapper;
@@ -41,7 +45,7 @@ public class CaseProducer {
             // 3. Save it to the database
             outboxRepository.save(outboxEvent);
             outboxEventsCreated.increment();
-            System.out.println("📦 OUTBOX SAVED: Case Created for Emergency ID: " + event.emergencyId());
+            log.info("📦 OUTBOX SAVED: Case Created for Emergency ID: " + event.emergencyId());
         } catch (Exception e) {
             throw new RuntimeException("Failed to serialize CaseCreated for outbox", e);
         }

@@ -1,5 +1,7 @@
 package org.example.matching.consumer;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.example.matching.entity.ProcessedEventId;
@@ -15,6 +17,8 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class EmergencyConsumer {
+
+    private static final Logger log = LoggerFactory.getLogger(EmergencyConsumer.class);
 
     private final MatchingService matchingService;
     private final ProcessedEventRepository processedEventRepository;
@@ -52,6 +56,6 @@ public class EmergencyConsumer {
 
     @DltHandler
     public void onDeadLetter(String jsonPayload) {
-        System.err.println("☠️ Emergency could not be dispatched after all retries and needs manual attention: " + jsonPayload);
+        log.error("☠️ Emergency could not be dispatched after all retries and needs manual attention: " + jsonPayload);
     }
 }

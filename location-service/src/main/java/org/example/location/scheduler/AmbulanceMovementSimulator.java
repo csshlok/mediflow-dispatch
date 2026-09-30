@@ -1,5 +1,7 @@
 package org.example.location.scheduler;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.example.location.entity.AmbulanceLocation;
 import org.example.location.producer.LocationProducer;
 import org.example.location.service.LocationService;
@@ -22,6 +24,8 @@ import java.util.concurrent.ConcurrentHashMap;
 @Component
 @ConditionalOnProperty(name = "location.simulator.enabled", havingValue = "true", matchIfMissing = true)
 public class AmbulanceMovementSimulator {
+
+    private static final Logger log = LoggerFactory.getLogger(AmbulanceMovementSimulator.class);
 
     private final LocationService locationService;
     private final LocationProducer producer;
@@ -70,11 +74,11 @@ public class AmbulanceMovementSimulator {
                     locationService.updateLocation(id, newLat, newLon);
 
                 } catch (Exception e) {
-                    System.err.println("Failed to simulate location for ambulance " + amb.get("id") + ": " + e.getMessage());
+                    log.warn("Failed to simulate location for ambulance " + amb.get("id") + ": " + e.getMessage());
                 }
             }
         } catch (Exception e) {
-            System.err.println("Simulator waiting for Ambulance Service: " + e.getMessage());
+            log.warn("Simulator waiting for Ambulance Service: " + e.getMessage());
         }
     }
 }

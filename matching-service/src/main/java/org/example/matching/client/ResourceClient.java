@@ -1,5 +1,7 @@
 package org.example.matching.client;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
@@ -18,6 +20,8 @@ import java.util.function.Supplier;
 
 @Component
 public class ResourceClient {
+
+    private static final Logger log = LoggerFactory.getLogger(ResourceClient.class);
 
     private static final int MAX_ATTEMPTS = 3;
     private static final long INITIAL_BACKOFF_MS = 500;
@@ -46,7 +50,7 @@ public class ResourceClient {
                 return networkCall.get();
             } catch (ResourceAccessException | HttpServerErrorException e) {
                 if (attempt == MAX_ATTEMPTS) {
-                    System.err.println("❌ [" + operationName + "] Failed after " + MAX_ATTEMPTS + " attempts: " + e.getMessage());
+                    log.error("❌ [" + operationName + "] Failed after " + MAX_ATTEMPTS + " attempts: " + e.getMessage());
                     throw e;
                 }
 
