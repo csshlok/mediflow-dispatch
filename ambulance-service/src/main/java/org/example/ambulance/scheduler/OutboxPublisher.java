@@ -8,15 +8,17 @@ import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 @Component
 public class OutboxPublisher {
 
-    private final OutboxRepository outboxRepository;
+    private static final long SEND_TIMEOUT_SECONDS = 10;
 
-    // 🛡️ UPGRADE 1: Strictly typed to <String, String> to prevent accidental JSON double-serialization
+    private final OutboxRepository outboxRepository;
     private final KafkaTemplate<String, String> kafkaTemplate;
     private final Counter outboxEventsPublished;
 
@@ -30,32 +32,34 @@ public class OutboxPublisher {
                 .register(meterRegistry);
     }
 
-    @Scheduled(fixedRate = 5000)
-    public void processOutbox() {
-        // 🛡️ UPGRADE 2: Maintained your excellent chronological sorting to prevent race conditions
-        List<OutboxEvent> pendingEvents = outboxRepository.findByStatusOrderByCreatedAtAsc("PENDING");
+    // One batch per run inside a transaction holding row locks. Events are keyed by emergency id so each
+    // emergency's events stay ordered on one partition, and the batch stops at the first failure so a later
+    // event never overtakes an earlier one that could not be sent.
+    @Scheduled(fixedDelay = 5000)
+    @Transactional
+    public void publishPendingEvents() {
+        List<OutboxEvent> pendingEvents = outboxRepository.findTop100ByStatusOrderByCreatedAtAsc("PENDING");
 
         for (OutboxEvent event : pendingEvents) {
             try {
-                // Determine the correct topic based on the event type
+                // Deliveries go to hospital-events, other lifecycle events to ambulance-events
                 String topic = event.getEventType().equals("PatientDeliveredEvent")
                         ? KafkaTopics.HOSPITAL_EVENTS
                         : KafkaTopics.AMBULANCE_EVENTS;
+                kafkaTemplate.send(topic, event.getAggregateId(), event.getPayload())
+                        .get(SEND_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
-                // 🛡️ UPGRADE 3: Added the Kafka Key (event.getAggregateId()) for partition ordering
-                // 🛡️ UPGRADE 4: Added .get() to force the thread to wait for Kafka's explicit acknowledgment
-                kafkaTemplate.send(topic, event.getAggregateId(), event.getPayload()).get();
-
-                // This code only executes if Kafka actually confirmed receipt
                 event.setStatus("PUBLISHED");
-                outboxRepository.save(event);
                 outboxEventsPublished.increment();
-                System.out.println("📤 Outbox Poller: Published " + event.getEventType());
 
             } catch (Exception e) {
-                // If Kafka is down, the error is caught here.
-                // The status remains 'PENDING', meaning the poller will automatically retry it in 5 seconds.
-                System.err.println("❌ Outbox Poller: Failed to publish event " + event.getId() + " - " + e.getMessage());
+                if (e instanceof InterruptedException) {
+                    Thread.currentThread().interrupt();
+                }
+                // Stays PENDING and is retried on the next run
+                System.err.println("⚠️ Outbox failed to publish " + event.getEventType() + " for Emergency ID: "
+                        + event.getAggregateId() + " - " + e.getMessage());
+                return;
             }
         }
     }
